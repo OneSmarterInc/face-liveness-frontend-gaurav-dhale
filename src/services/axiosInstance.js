@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getCookie } from "../utils/cookies";
+import { getCookie, removeCookie } from "../utils/cookies";
 
 const BASE_URL = "http://127.0.0.1:8000/api";
 
@@ -18,5 +18,21 @@ axiosInstance.interceptors.request.use((config) => {
     }
     return config;
 });
+
+axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            removeCookie("kormic_auth");
+            removeCookie("kormic_auth_token");
+            removeCookie("kormic_refresh_token");
+
+            if (window.location.pathname !== "/login") {
+                window.location.href = "/login";
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default axiosInstance;
