@@ -1,0 +1,124 @@
+.totp-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-family: Inter, Arial, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b1120 60%);
+}
+
+.totp-card {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    border-radius: 18px;
+    border: 1px solid #2d3748;
+    background: #1a2332;
+    padding: 40px 36px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.totp-icon {
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    width: 56px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    font-size: 24px;
+}
+
+.totp-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+}
+
+.totp-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #f9fafb;
+}
+
+.totp-subtitle {
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+.totp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.totp-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #d1d5db;
+}
+
+.totp-input {
+    border-radius: 10px;
+    border: 1px solid #374151;
+    background: #111827;
+    padding: 12px 14px;
+    font-size: 20px;
+    text-align: center;
+    letter-spacing: 0.5em;
+    color: #ffffff;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.totp-input::placeholder {
+    letter-spacing: normal;
+    color: #6b7280;
+}
+
+.totp-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+}
+
+.totp-error {
+    border-radius: 10px;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    background: rgba(248, 113, 113, 0.1);
+    padding: 10px 12px;
+    text-align: center;
+    font-size: 14px;
+    color: #fca5a5;
+}
+
+.totp-button {
+    margin-top: 6px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease, opacity 0.15s ease;
+}
+
+.totp-button:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.totp-button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.totp-button:disabled {
+    cursor: not-allowed;
+    background: #1d4ed8;
+    opacity: 0.7;
+}
