@@ -1,0 +1,125 @@
+.datepicker {
+    position: relative;
+    width: 100%;
+}
+
+.datepicker-input {
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.datepicker-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    border-radius: 12px;
+    border: 1px solid #374151;
+    background: #111827;
+    padding: 14px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55);
+}
+
+.datepicker-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.datepicker-nav {
+    flex: 0 0 auto;
+    border: 1px solid #374151;
+    background: #1a2332;
+    color: #e5e7eb;
+    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.datepicker-nav:hover {
+    background: #202b3d;
+    border-color: #2563eb;
+}
+
+.datepicker-select {
+    flex: 1 1 auto;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #1a2332;
+    color: #f9fafb;
+    padding: 6px 8px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+}
+
+.datepicker-select:focus {
+    border-color: #2563eb;
+}
+
+.datepicker-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 4px;
+}
+
+.datepicker-weekday {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    padding: 4px 0;
+}
+
+.datepicker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.datepicker-cell {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.datepicker-day {
+    border: none;
+    background: transparent;
+    color: #d1d5db;
+    font-size: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.datepicker-day:hover:not(:disabled) {
+    background: rgba(37, 99, 235, 0.25);
+    color: #ffffff;
+}
+
+.datepicker-day:disabled {
+    color: #374151;
+    cursor: not-allowed;
+}
+
+.datepicker-day--selected {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.datepicker-cell--empty {
+    pointer-events: none;
+}

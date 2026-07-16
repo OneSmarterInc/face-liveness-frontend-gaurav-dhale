@@ -83,6 +83,12 @@
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
 }
 
+.login-input:disabled {
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
 .login-error {
     border-radius: 10px;
     border: 1px solid rgba(248, 113, 113, 0.3);
@@ -91,6 +97,16 @@
     text-align: center;
     font-size: 14px;
     color: #fca5a5;
+}
+
+.login-success {
+    border-radius: 10px;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    background: rgba(74, 222, 128, 0.1);
+    padding: 10px 12px;
+    text-align: center;
+    font-size: 14px;
+    color: #86efac;
 }
 
 .login-button {
@@ -118,4 +134,52 @@
     cursor: not-allowed;
     background: #1d4ed8;
     opacity: 0.7;
+}
+
+.password-field-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding-right: 44px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 0;
+    transition: color 0.15s ease;
+}
+
+.password-toggle-btn:hover {
+    color: #e5e7eb;
+}
+
+.signup-footer-text {
+    margin-top: -8px;
+    text-align: center;
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+.signup-link {
+    color: #60a5fa;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.signup-link:hover {
+    text-decoration: underline;
 }

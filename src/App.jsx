@@ -5,6 +5,8 @@ import GuestRoute from "./routes/GuestRoute";
 import Home from "./pages/Home";
 import LivenessCheck from "./pages/LivenessCheck";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import TotpEnroll from "./pages/TotpEnroll";
 import VerifyTotp from "./pages/VerifyTotp";
 
 function App() {
@@ -21,7 +23,16 @@ function App() {
               </GuestRoute>
             }
           />
+          <Route
+            path="/signup"
+            element={
+              <GuestRoute>
+                <Signup />
+              </GuestRoute>
+            }
+          />
           <Route path="/verify-totp" element={<VerifyTotp />} />
+          <Route path="/totp-enroll" element={<TotpEnroll />} />
           <Route
             path="/face-liveness"
             element={

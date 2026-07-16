@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 import { calculateYaw } from "../utils/yaw";
+import { calculateEAR } from "../utils/ear";
 
 const WASM_URL =
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
@@ -27,6 +28,7 @@ export default function useFaceMesh(videoRef) {
     isFaceLargeEnough: false,
     canStartVerification: false,
     yaw: 0,
+    ear: null,
   });
   const [error, setError] = useState(null);
 
@@ -112,6 +114,7 @@ export default function useFaceMesh(videoRef) {
           isFaceLargeEnough: false,
           canStartVerification: false,
           yaw: 0,
+          ear: null,
         };
 
         if (faces.length > 0) {
@@ -164,6 +167,7 @@ export default function useFaceMesh(videoRef) {
               centered &&
               largeEnough,
             yaw: calculateYaw(face),
+            ear: calculateEAR(face, canvas.width, canvas.height),
           };
         }
 
@@ -176,7 +180,8 @@ export default function useFaceMesh(videoRef) {
             prev.isFaceLargeEnough === nextState.isFaceLargeEnough &&
             prev.canStartVerification ===
               nextState.canStartVerification &&
-            prev.yaw === nextState.yaw
+            prev.yaw === nextState.yaw &&
+            prev.ear === nextState.ear
           ) {
             return prev;
           }

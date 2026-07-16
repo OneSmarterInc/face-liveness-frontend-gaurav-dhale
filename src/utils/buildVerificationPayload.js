@@ -11,6 +11,7 @@ export function buildVerificationPayload({
   completedChallenges,
   startedAt,
   completedAt,
+  computedResult,
 }) {
   return {
     session_nonce: verificationSession.session_nonce,
@@ -21,11 +22,11 @@ export function buildVerificationPayload({
 
     detector_provider: "MediaPipe",
 
-    platform: "android",
+    platform: "web",
 
-    app_version: "1.0.0",
+    app_version: __APP_VERSION__,
 
-    final_liveness_result: "passed",
+    final_liveness_result: computedResult,
 
     challenge_results: completedChallenges.map((challenge) => ({
       challenge: challengeTypeMap[challenge.type],

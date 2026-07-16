@@ -1,0 +1,11 @@
+.signup-card {
+    max-width: 420px;
+}
+
+.signup-card .login-button {
+    align-self: center;
+    width: 100%;
+    max-width: 240px;
+    padding: 12px;
+    font-size: 15px;
+}

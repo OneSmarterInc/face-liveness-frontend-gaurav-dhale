@@ -6,7 +6,9 @@ import FaceGuide from "./FaceGuide";
 import useLiveness from "../../hooks/useLiveness";
 import { getFailureMessage } from "../../utils/livenessStates";
 import { mapBackendChallenges } from "../../utils/challengeMapper";
+import { getChallengeInstruction } from "../../utils/Challengeinstructions";
 import { buildVerificationPayload } from "../../utils/buildVerificationPayload";
+import { evaluateLivenessResult } from "../../utils/evaluateLivenessResult";
 import { completeSession } from "../../services/identityVerification";
 import { useAuth } from "../../context/AuthContext";
 function CameraFeed({ verificationSession }) {
@@ -25,6 +27,28 @@ function CameraFeed({ verificationSession }) {
   const bufferCanvasRef = useRef(document.createElement("canvas"));
   const [verificationPayload, setVerificationPayload] = useState(null);
   const verificationStartedAtRef = useRef(null);
+
+  // Independent evidence for evaluateLivenessResult — accumulated across the
+  // whole attempt rather than read from a single current-frame snapshot, so
+  // e.g. "face remained centered" reflects the entire session, not just
+  // whatever the camera happens to show at the moment SUCCESS is reached.
+  const qualityRef = useRef({
+    multipleFacesDetected: false,
+    faceLostDetected: false,
+    centeredBroke: false,
+    tooSmallBroke: false,
+  });
+  const neutralVisitedStepsRef = useRef(new Set());
+
+  function resetLivenessEvidence() {
+    qualityRef.current = {
+      multipleFacesDetected: false,
+      faceLostDetected: false,
+      centeredBroke: false,
+      tooSmallBroke: false,
+    };
+    neutralVisitedStepsRef.current = new Set();
+  }
   const { completeLiveness } = useAuth();
   const {
     canvasRef,
@@ -33,6 +57,7 @@ function CameraFeed({ verificationSession }) {
     isFaceLargeEnough,
     canStartVerification,
     yaw,
+    ear,
   } = useFaceMesh(videoRef);
 
   const challenges = useMemo(
@@ -42,12 +67,13 @@ function CameraFeed({ verificationSession }) {
   const {
     state,
     sequence,
+    currentStep,
     currentChallenge,
     completedChallenges,
     phase,
     failureReason,
     retry,
-  } = useLiveness(canStartVerification, yaw, { challenges });
+  } = useLiveness(canStartVerification, yaw, ear, { challenges });
 
   if (!verificationSession) {
     return (
@@ -85,8 +111,32 @@ function CameraFeed({ verificationSession }) {
     clearCapture();
     hasCapturedRef.current = false;
     setVerificationPayload(null);
+    verificationStartedAtRef.current = null;
+    resetLivenessEvidence();
     retry();
   };
+
+  // Track whether the face conditions ever broke while verification was
+  // actively running. Only recorded while PROMPT is active — this isn't
+  // meant to flag the brief pre-start state before a face is even found.
+  useEffect(() => {
+    if (state !== "PROMPT") return;
+
+    if (faceCount > 1) qualityRef.current.multipleFacesDetected = true;
+    if (faceCount === 0) qualityRef.current.faceLostDetected = true;
+    if (faceCount === 1 && !isFaceCentered) qualityRef.current.centeredBroke = true;
+    if (faceCount === 1 && !isFaceLargeEnough) qualityRef.current.tooSmallBroke = true;
+  }, [state, faceCount, isFaceCentered, isFaceLargeEnough]);
+
+  // Record, per step index, that WAIT_FOR_NEUTRAL -> WAIT_FOR_TARGET was
+  // actually observed before that step's challenge was evaluated — i.e. the
+  // user genuinely returned to neutral, not just that the reducer's phase
+  // field currently claims so.
+  useEffect(() => {
+    if (phase === "WAIT_FOR_TARGET") {
+      neutralVisitedStepsRef.current.add(currentStep);
+    }
+  }, [phase, currentStep]);
   useEffect(() => {
     if (state === "PROMPT" && !verificationStartedAtRef.current) {
       verificationStartedAtRef.current = new Date().toISOString();
@@ -105,12 +155,26 @@ function CameraFeed({ verificationSession }) {
     async function submitVerification() {
       try {
         const capture = await captureFrame();
+        const completedAt = new Date().toISOString();
+
+        const computedResult = evaluateLivenessResult({
+          state,
+          failureReason,
+          completedChallenges,
+          expectedSequence: challenges,
+          neutralVisitedSteps: neutralVisitedStepsRef.current,
+          quality: qualityRef.current,
+          startedAt: verificationStartedAtRef.current,
+          completedAt,
+          capturedImage: capture,
+        });
 
         const payload = buildVerificationPayload({
           verificationSession,
           completedChallenges,
           startedAt: verificationStartedAtRef.current,
-          completedAt: new Date().toISOString(),
+          completedAt,
+          computedResult,
         });
 
         console.log("🚀 Verification Payload");
@@ -151,7 +215,9 @@ function CameraFeed({ verificationSession }) {
     submitVerification();
   }, [
     state,
+    failureReason,
     completedChallenges,
+    challenges,
     captureFrame,
     stopCamera,
     verificationSession,
@@ -331,19 +397,33 @@ function CameraFeed({ verificationSession }) {
       {canStartVerification && state !== "FAILED" && sequence.length > 0 && (
         <>
           {state !== "SUCCESS" && currentChallenge && (
-            <div
-              style={{
-                marginTop: "10px",
-                textAlign: "center",
-                fontSize: "20px",
-                fontWeight: "bold",
-                color: "#60a5fa",
-              }}
-            >
-              {phase === "WAIT_FOR_NEUTRAL"
-                ? "Face Forward"
-                : currentChallenge?.label}
-            </div>
+            <>
+              <div
+                style={{
+                  marginTop: "10px",
+                  textAlign: "center",
+                  fontSize: "20px",
+                  fontWeight: "bold",
+                  color: "#60a5fa",
+                }}
+              >
+                {phase === "WAIT_FOR_NEUTRAL"
+                  ? "Face Forward"
+                  : currentChallenge?.label}
+              </div>
+              {phase !== "WAIT_FOR_NEUTRAL" && (
+                <div
+                  style={{
+                    marginTop: "4px",
+                    textAlign: "center",
+                    fontSize: "14px",
+                    color: "#9ca3af",
+                  }}
+                >
+                  {getChallengeInstruction(currentChallenge?.type)}
+                </div>
+              )}
+            </>
           )}
 
           {state !== "SUCCESS" && completedChallenges.length > 0 && (

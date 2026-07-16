@@ -6,12 +6,17 @@ const NEUTRAL_THRESHOLD = 8;
 const LEFT_THRESHOLD = 20;
 const RIGHT_THRESHOLD = -20;
 
+const EAR_CLOSED_THRESHOLD = 0.19;
+const EAR_OPEN_THRESHOLD = 0.25;
+
+const BLINK_MIN_CLOSED_FRAMES = 2;
+
 const HISTORY_SIZE = 12;
 const TRANSITION_DELAY_MS = 700;
 
 const CAPTURE_SETTLE_FRAMES = 5;
 
-const VERIFICATION_TIMEOUT_MS = 30000;
+export const VERIFICATION_TIMEOUT_MS = 30000;
 
 const PHASE = {
   WAIT_FOR_NEUTRAL: "WAIT_FOR_NEUTRAL",
@@ -111,6 +116,7 @@ function reducer(session, action) {
 export default function useLiveness(
   canStartVerification,
   yaw,
+  ear,
   { challenges } = {},
 ) {
   const [session, dispatch] = useReducer(reducer, initialSession);
@@ -118,6 +124,14 @@ export default function useLiveness(
   const yawHistoryRef = useRef([]);
   const timeoutRef = useRef(null);
   const captureSettleCountRef = useRef(0);
+
+  // Blink is a two-phase state machine: we first wait to see the eyes read
+  // as closed for a few consecutive frames, then wait for them to reopen.
+  // Only a full close -> reopen cycle counts as a blink; a single "eyes are
+  // currently shut" frame does not (that's indistinguishable from a photo of
+  // someone with their eyes shut, or a stale reading).
+  const blinkStageRef = useRef("WAITING_FOR_CLOSE");
+  const closedFrameCountRef = useRef(0);
 
   const clearPendingTimeout = useCallback(() => {
     if (timeoutRef.current) {
@@ -130,9 +144,15 @@ export default function useLiveness(
     yawHistoryRef.current = [];
   }, []);
 
+  const resetBlinkDetector = useCallback(() => {
+    blinkStageRef.current = "WAITING_FOR_CLOSE";
+    closedFrameCountRef.current = 0;
+  }, []);
+
   useEffect(() => {
     clearPendingTimeout();
     resetYawHistory();
+    resetBlinkDetector();
     captureSettleCountRef.current = 0;
 
     if (!canStartVerification) {
@@ -160,18 +180,20 @@ export default function useLiveness(
     session.status,
     clearPendingTimeout,
     resetYawHistory,
+    resetBlinkDetector,
   ]);
 
   const retry = useCallback(() => {
     clearPendingTimeout();
     resetYawHistory();
+    resetBlinkDetector();
     captureSettleCountRef.current = 0;
 
     dispatch({
       type: "START_VERIFICATION",
       sequence: challenges ?? DEFAULT_CHALLENGES,
     });
-  }, [clearPendingTimeout, resetYawHistory, challenges]);
+  }, [clearPendingTimeout, resetYawHistory, resetBlinkDetector, challenges]);
 
   useEffect(() => {
     if (session.status !== LIVENESS_STATES.PROMPT) return;
@@ -207,8 +229,7 @@ export default function useLiveness(
         return isNeutral();
 
       case ChallengeType.BLINK:
-        console.warn("Blink not implemented");
-        return true; // Temporary for now
+        return detectBlinkCompleted();
 
       default:
         return false;
@@ -217,6 +238,41 @@ export default function useLiveness(
 
   function isNeutral() {
     return Math.abs(yaw) <= NEUTRAL_THRESHOLD;
+  }
+
+  // Returns true exactly once per full close -> reopen cycle. A single
+  // "currently closed" reading is not enough (that doesn't rule out a photo
+  // of someone with their eyes shut); this requires the eyes to actually
+  // transition shut, stay shut for a couple of frames, then reopen.
+  function detectBlinkCompleted() {
+    if (typeof ear !== "number") {
+      // No reliable eye landmarks this frame (face turned too far, tracking
+      // lost, etc.) — don't guess, just wait for a good reading.
+      return false;
+    }
+
+    if (blinkStageRef.current === "WAITING_FOR_CLOSE") {
+      if (ear < EAR_CLOSED_THRESHOLD) {
+        closedFrameCountRef.current += 1;
+
+        if (closedFrameCountRef.current >= BLINK_MIN_CLOSED_FRAMES) {
+          blinkStageRef.current = "WAITING_FOR_REOPEN";
+        }
+      } else {
+        closedFrameCountRef.current = 0;
+      }
+
+      return false;
+    }
+
+    // WAITING_FOR_REOPEN
+    if (ear > EAR_OPEN_THRESHOLD) {
+      blinkStageRef.current = "WAITING_FOR_CLOSE";
+      closedFrameCountRef.current = 0;
+      return true;
+    }
+
+    return false;
   }
 
   function movedSmoothly() {
@@ -241,6 +297,7 @@ export default function useLiveness(
 
       if (isNeutral()) {
         resetYawHistory();
+        resetBlinkDetector();
         dispatch({ type: "NEUTRAL_REACHED" });
       }
       return;
@@ -286,6 +343,7 @@ export default function useLiveness(
     }
   }, [
     yaw,
+    ear,
     session.phase,
     session.sequence,
     session.currentStep,

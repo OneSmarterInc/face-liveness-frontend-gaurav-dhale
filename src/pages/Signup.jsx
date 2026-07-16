@@ -1,25 +1,26 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
 import { postInstance } from "../services/apiCall";
 import "./Login.css";
+import "./Signup.css";
 
-function Login() {
+const SIGNUP_ROLE = "student";
+
+function Signup() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email.trim() || !password.trim()) {
-      setError("Please enter both email and password.");
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError("Please fill in all fields.");
       return;
     }
 
@@ -27,31 +28,29 @@ function Login() {
     setIsSubmitting(true);
 
     try {
-      const response = await postInstance("/auth/login/", {
+      const response = await postInstance("/auth/register/", {
+        name: name.trim(),
         email: email.trim(),
         password,
+        role: SIGNUP_ROLE,
       });
 
       const data = response.data;
+      const accessToken = data?.access_token || data?.access;
 
-      if (data?.totp_required && !data?.must_enroll_totp && data?.mfa_token) {
-        navigate("/verify-totp", {
+      if (data?.must_enroll_totp) {
+        navigate("/totp-enroll", {
           replace: true,
-          state: { mfaToken: data.mfa_token, from: location.state?.from },
+          state: { accessToken, email: email.trim() },
         });
         return;
       }
 
-      const accessToken = data?.access_token || data?.access;
-      const refreshToken = data?.refresh_token || data?.refresh;
-      login({ accessToken, refreshToken });
-
-      const redirectTo = location.state?.from?.pathname || "/face-liveness";
-      navigate(redirectTo, { replace: true });
+      navigate("/login", { replace: true, state: { registered: true } });
     } catch (err) {
       const responseData = err.response?.data;
       if (err.response) {
-        setError(responseData?.message || responseData?.detail || "Invalid email or password.");
+        setError(responseData?.message || responseData?.detail || "Unable to sign up. Please try again.");
       } else {
         setError("Unable to reach the server. Please try again.");
       }
@@ -62,12 +61,25 @@ function Login() {
 
   return (
     <div className="login-page">
-      <form onSubmit={handleSubmit} className="login-card">
-        <div className="login-icon">🔒</div>
-
+      <form onSubmit={handleSubmit} className="login-card signup-card">
         <div className="login-heading">
-          <h1 className="login-title">Welcome Back</h1>
-          <p className="login-subtitle">Sign in to continue to Face Liveness</p>
+          <h1 className="login-title">Create Account</h1>
+          <p className="login-subtitle">Sign up to get started with Face Liveness</p>
+        </div>
+
+        <div className="login-field">
+          <label htmlFor="name" className="login-label">
+            Name
+          </label>
+          <input
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter your full name"
+            autoComplete="name"
+            className="login-input"
+          />
         </div>
 
         <div className="login-field">
@@ -86,6 +98,19 @@ function Login() {
         </div>
 
         <div className="login-field">
+          <label htmlFor="role" className="login-label">
+            Role
+          </label>
+          <input
+            id="role"
+            type="text"
+            value="Student"
+            disabled
+            className="login-input"
+          />
+        </div>
+
+        <div className="login-field">
           <label htmlFor="password" className="login-label">
             Password
           </label>
@@ -95,8 +120,8 @@ function Login() {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              autoComplete="current-password"
+              placeholder="Create a password"
+              autoComplete="new-password"
               className="login-input password-input"
             />
             <button
@@ -110,20 +135,16 @@ function Login() {
           </div>
         </div>
 
-        {location.state?.registered && !error && (
-          <div className="login-success">Account created. Please log in to continue.</div>
-        )}
-
         {error && <div className="login-error">{error}</div>}
 
         <button type="submit" disabled={isSubmitting} className="login-button">
-          {isSubmitting ? "Logging in..." : "Log In"}
+          {isSubmitting ? "Signing up..." : "Sign Up"}
         </button>
 
         <p className="signup-footer-text">
-          Don't have an account?{" "}
-          <Link to="/signup" className="signup-link">
-            Sign Up
+          Already have an account?{" "}
+          <Link to="/login" className="signup-link">
+            Log In
           </Link>
         </p>
       </form>
@@ -131,4 +152,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default Signup;
