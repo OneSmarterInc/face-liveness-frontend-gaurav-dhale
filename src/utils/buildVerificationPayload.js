@@ -12,6 +12,7 @@ export function buildVerificationPayload({
   startedAt,
   completedAt,
   computedResult,
+  faceEmbedding,
 }) {
   return {
     session_nonce: verificationSession.session_nonce,
@@ -33,5 +34,9 @@ export function buildVerificationPayload({
       passed: true,
       completed_at: completedAt,
     })),
+
+    face_embedding: faceEmbedding ?? null,
+
+    embedding_model: faceEmbedding ? "insightface_w600k_r50" : null,
   };
 }

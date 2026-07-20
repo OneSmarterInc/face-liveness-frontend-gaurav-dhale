@@ -20,6 +20,9 @@ export default function useFaceMesh(videoRef) {
   const errorCountRef = useRef(0);
   const hasLoggedFatalRef = useRef(false);
 
+
+  const latestLandmarksRef = useRef(null);
+
   const MAX_CONSECUTIVE_ERRORS = 5;
 
   const [state, setState] = useState({
@@ -108,6 +111,10 @@ export default function useFaceMesh(videoRef) {
 
         const faces = results.faceLandmarks || [];
 
+        if (faces.length === 0) {
+          latestLandmarksRef.current = null;
+        }
+
         let nextState = {
           faceCount: faces.length,
           isFaceCentered: false,
@@ -121,6 +128,8 @@ export default function useFaceMesh(videoRef) {
           ctx.fillStyle = "#00ff00";
 
           const face = faces[0];
+
+          latestLandmarksRef.current = face;
 
           let minX = 1;
           let maxX = 0;
@@ -238,6 +247,7 @@ export default function useFaceMesh(videoRef) {
 
   return {
     canvasRef,
+    latestLandmarksRef,
     ...state,
     error,
   };

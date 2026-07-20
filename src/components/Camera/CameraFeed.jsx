@@ -4,6 +4,7 @@ import useCamera from "../../hooks/useCamera";
 import useFaceMesh from "../../hooks/useFaceMesh";
 import FaceGuide from "./FaceGuide";
 import useLiveness from "../../hooks/useLiveness";
+import useFaceRecognition from "../../hooks/useFaceRecognition";
 import { getFailureMessage } from "../../utils/livenessStates";
 import { mapBackendChallenges } from "../../utils/challengeMapper";
 import { getChallengeInstruction } from "../../utils/Challengeinstructions";
@@ -28,10 +29,7 @@ function CameraFeed({ verificationSession }) {
   const [verificationPayload, setVerificationPayload] = useState(null);
   const verificationStartedAtRef = useRef(null);
 
-  // Independent evidence for evaluateLivenessResult — accumulated across the
-  // whole attempt rather than read from a single current-frame snapshot, so
-  // e.g. "face remained centered" reflects the entire session, not just
-  // whatever the camera happens to show at the moment SUCCESS is reached.
+  
   const qualityRef = useRef({
     multipleFacesDetected: false,
     faceLostDetected: false,
@@ -50,8 +48,10 @@ function CameraFeed({ verificationSession }) {
     neutralVisitedStepsRef.current = new Set();
   }
   const { completeLiveness } = useAuth();
+  const { generateEmbedding, isModelReady: isFaceModelReady } = useFaceRecognition();
   const {
     canvasRef,
+    latestLandmarksRef,
     faceCount,
     isFaceCentered,
     isFaceLargeEnough,
@@ -155,7 +155,27 @@ function CameraFeed({ verificationSession }) {
     async function submitVerification() {
       try {
         const capture = await captureFrame();
+        const capturedLandmarks = latestLandmarksRef.current;
         const completedAt = new Date().toISOString();
+
+        // Best-effort: a failed/slow embedding should not block submission
+        // of the liveness result itself, so this never throws out of here.
+        let faceEmbedding = null;
+        try {
+          const blob = capture?.blob ?? capture;
+          console.log("blob",blob)
+          if (blob) {
+            const bitmap = await createImageBitmap(blob);
+            console.log("bitmap",bitmap)
+            try {
+              faceEmbedding = await generateEmbedding(bitmap, capturedLandmarks);
+            } finally {
+              bitmap.close?.();
+            }
+          }
+        } catch (embeddingError) {
+          console.error("❌ Face embedding generation failed:", embeddingError);
+        }
 
         const computedResult = evaluateLivenessResult({
           state,
@@ -175,10 +195,10 @@ function CameraFeed({ verificationSession }) {
           startedAt: verificationStartedAtRef.current,
           completedAt,
           computedResult,
+          faceEmbedding,
         });
 
         console.log("🚀 Verification Payload");
-        console.log(payload);
 
         const response = await completeSession(
           verificationSession.session_id,
@@ -222,6 +242,7 @@ function CameraFeed({ verificationSession }) {
     stopCamera,
     verificationSession,
     navigate,
+    generateEmbedding,
   ]);
 
   useEffect(() => {
@@ -350,6 +371,17 @@ function CameraFeed({ verificationSession }) {
       >
         Session: {verificationSession.session_id}
       </div>
+      {!isFaceModelReady && (
+        <div
+          style={{
+            marginTop: "4px",
+            fontSize: "12px",
+            color: "#6b7280",
+          }}
+        >
+          Loading face recognition model…
+        </div>
+      )}
       {state !== "SUCCESS" && (
         <div
           style={{
