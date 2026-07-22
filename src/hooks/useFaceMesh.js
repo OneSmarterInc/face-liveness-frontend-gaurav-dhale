@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 import { calculateYaw } from "../utils/yaw";
-import { calculateEAR } from "../utils/ear";
+import { calculateEAR, calculateEyeAspectRatios } from "../utils/ear";
+import { calculatePitch, calculateRoll } from "../utils/headPose";
 
 const WASM_URL =
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
 
 const MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+
+// Detector version reported in the `detector` block of the verification
+// payload — kept in sync with the WASM_URL above rather than duplicated.
+export const MEDIAPIPE_VERSION =
+  WASM_URL.match(/tasks-vision@([\d.]+)/)?.[1] ?? "unknown";
 
 export default function useFaceMesh(videoRef) {
   const canvasRef = useRef(null);
@@ -32,6 +38,11 @@ export default function useFaceMesh(videoRef) {
     canStartVerification: false,
     yaw: 0,
     ear: null,
+    pitch: 0,
+    roll: 0,
+    earLeft: null,
+    earRight: null,
+    faceConfidence: 0,
   });
   const [error, setError] = useState(null);
 
@@ -122,6 +133,11 @@ export default function useFaceMesh(videoRef) {
           canStartVerification: false,
           yaw: 0,
           ear: null,
+          pitch: 0,
+          roll: 0,
+          earLeft: null,
+          earRight: null,
+          faceConfidence: 0,
         };
 
         if (faces.length > 0) {
@@ -167,6 +183,23 @@ export default function useFaceMesh(videoRef) {
             faceWidth > 0.28 &&
             faceHeight > 0.42;
 
+          const earPair = calculateEyeAspectRatios(
+            face,
+            canvas.width,
+            canvas.height,
+          );
+
+          // MediaPipe FaceLandmarker doesn't expose a per-frame detection
+          // confidence score here (that needs the separate face-detector
+          // output / blendshapes, not enabled for this use case). This is
+          // a lightweight proxy — 1.0 for a single, centered,
+          // appropriately-sized face, decaying as those signals degrade —
+          // not a model probability.
+          const faceConfidence = Math.max(
+            0,
+            1 - (centered ? 0 : 0.3) - (largeEnough ? 0 : 0.3),
+          );
+
           nextState = {
             faceCount: faces.length,
             isFaceCentered: centered,
@@ -177,6 +210,11 @@ export default function useFaceMesh(videoRef) {
               largeEnough,
             yaw: calculateYaw(face),
             ear: calculateEAR(face, canvas.width, canvas.height),
+            pitch: calculatePitch(face),
+            roll: calculateRoll(face),
+            earLeft: earPair.left,
+            earRight: earPair.right,
+            faceConfidence: Number(faceConfidence.toFixed(2)),
           };
         }
 
@@ -190,7 +228,12 @@ export default function useFaceMesh(videoRef) {
             prev.canStartVerification ===
               nextState.canStartVerification &&
             prev.yaw === nextState.yaw &&
-            prev.ear === nextState.ear
+            prev.ear === nextState.ear &&
+            prev.pitch === nextState.pitch &&
+            prev.roll === nextState.roll &&
+            prev.earLeft === nextState.earLeft &&
+            prev.earRight === nextState.earRight &&
+            prev.faceConfidence === nextState.faceConfidence
           ) {
             return prev;
           }

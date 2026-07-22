@@ -38,3 +38,17 @@ export function calculateEAR(faceLandmarks, width, height) {
 
   return (left + right) / 2;
 }
+
+// Per-eye EAR, kept separate from calculateEAR above (which averages the
+// two for blink detection). Used for the `ear_left` / `ear_right`
+// telemetry fields.
+export function calculateEyeAspectRatios(faceLandmarks, width, height) {
+  if (!faceLandmarks || faceLandmarks.length === 0 || !width || !height) {
+    return { left: null, right: null };
+  }
+
+  return {
+    left: eyeAspectRatio(faceLandmarks, LEFT_EYE, width, height),
+    right: eyeAspectRatio(faceLandmarks, RIGHT_EYE, width, height),
+  };
+}

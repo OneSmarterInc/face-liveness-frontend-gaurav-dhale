@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { computeImageQuality } from "../utils/quality";
+
 const MAX_BUFFER_SIZE = 5;
 
 export default function useCamera() {
   const videoRef = useRef(null);
   const frameBufferRef = useRef([]);
+  const cameraSettingsRef = useRef({ width: null, height: null, fps: null });
   const [error, setError] = useState(null);
-  const [capturedImage, setCapturedImage] = useState(null);
+  const [capture, setCapture] = useState(null);
 
   useEffect(() => {
     let stream;
@@ -22,6 +25,15 @@ export default function useCamera() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+
+        const track = stream.getVideoTracks()[0];
+        const settings = track?.getSettings?.() ?? {};
+
+        cameraSettingsRef.current = {
+          width: settings.width ?? null,
+          height: settings.height ?? null,
+          fps: settings.frameRate ? Math.round(settings.frameRate) : null,
+        };
       } catch (err) {
         setError(err.message);
       }
@@ -36,15 +48,47 @@ export default function useCamera() {
     };
   }, []);
 
-  const captureFrame = () => {
-    if (
-      !videoRef.current ||
-      videoRef.current.videoWidth === 0 ||
-      videoRef.current.videoHeight === 0
-    ) {
-      return null;
-    }
 
+  function finalizeCapture(canvas) {
+    const quality = computeImageQuality(canvas);
+    const frameTimestamp = new Date().toISOString();
+
+
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+    const base64 = dataUrl.split(",")[1] ?? null;
+
+    return new Promise((resolve) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(null);
+
+          const imageUrl = URL.createObjectURL(blob);
+
+          const captured = {
+            blob,
+            base64,
+            url: imageUrl,
+            type: blob.type,
+            size: blob.size,
+            width: canvas.width,
+            height: canvas.height,
+            frameTimestamp,
+            qualityScore: quality.quality_score,
+            sharpness: quality.sharpness,
+            brightness: quality.brightness,
+          };
+
+          setCapture(captured);
+
+          resolve(captured);
+        },
+        "image/jpeg",
+        0.95,
+      );
+    });
+  }
+
+  const captureFrame = () => {
     if (frameBufferRef.current.length > 0) {
       console.log("📦 Buffer Content");
 
@@ -63,63 +107,29 @@ export default function useCamera() {
         timestamp: bestFrame.timestamp,
       });
 
-      return new Promise((resolve) => {
-        bestFrame.canvas.toBlob(
-          (blob) => {
-            if (!blob) return;
+      return finalizeCapture(bestFrame.canvas);
+    }
 
-            const imageUrl = URL.createObjectURL(blob);
-
-            const capture = {
-              blob,
-              url: imageUrl,
-              type: blob.type,
-              size: blob.size,
-              width: bestFrame.canvas.width,
-              height: bestFrame.canvas.height,
-              capturedAt: new Date().toISOString(),
-            };
-
-            setCapturedImage(capture);
-
-            resolve(capture);
-          },
-          "image/jpeg",
-          0.95,
-        );
-      });
+    if (
+      !videoRef.current ||
+      videoRef.current.videoWidth === 0 ||
+      videoRef.current.videoHeight === 0
+    ) {
+      return null;
     }
 
     const video = videoRef.current;
-
     const canvas = document.createElement("canvas");
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     const ctx = canvas.getContext("2d");
-
     ctx.drawImage(video, 0, 0);
 
-    return new Promise((resolve) => {
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) return;
-
-          const imageUrl = URL.createObjectURL(blob);
-
-          setCapturedImage({
-            blob,
-            url: imageUrl,
-          });
-
-          resolve(blob);
-        },
-        "image/jpeg",
-        0.95,
-      );
-    });
+    return finalizeCapture(canvas);
   };
+
   const addFrameToBuffer = (sourceCanvas, score) => {
     const snapshot = document.createElement("canvas");
 
@@ -160,22 +170,23 @@ export default function useCamera() {
   };
 
   const clearCapture = () => {
-    if (capturedImage?.url) {
-      URL.revokeObjectURL(capturedImage.url);
+    if (capture?.url) {
+      URL.revokeObjectURL(capture.url);
     }
 
-    setCapturedImage(null);
+    setCapture(null);
   };
 
   return {
     videoRef,
     error,
-    capturedImage,
+    capture,
     captureFrame,
     stopCamera,
     clearCapture,
     frameBufferRef,
     addFrameToBuffer,
     clearFrameBuffer,
+    cameraSettingsRef,
   };
 }

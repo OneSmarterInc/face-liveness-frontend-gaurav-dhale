@@ -26,7 +26,6 @@ const PHASE = {
   DONE: "DONE",
 };
 
-
 const initialSession = {
   status: LIVENESS_STATES.IDLE,
   sequence: [],
@@ -34,6 +33,7 @@ const initialSession = {
   completedChallenges: [],
   phase: PHASE.WAIT_FOR_NEUTRAL,
   failureReason: null,
+  currentStepStartedAt: null,
 };
 
 function reducer(session, action) {
@@ -62,7 +62,11 @@ function reducer(session, action) {
 
     case "NEUTRAL_REACHED":
       if (session.phase !== PHASE.WAIT_FOR_NEUTRAL) return session;
-      return { ...session, phase: PHASE.WAIT_FOR_TARGET };
+      return {
+        ...session,
+        phase: PHASE.WAIT_FOR_TARGET,
+        currentStepStartedAt: action.timestamp,
+      };
 
     case "COMPLETE_CHALLENGE": {
       console.log("COMPLETE_CHALLENGE", action.challenge.type);
@@ -71,7 +75,11 @@ function reducer(session, action) {
 
       const completedChallenges = [
         ...session.completedChallenges,
-        action.challenge,
+        {
+          ...action.challenge,
+          startedAt: session.currentStepStartedAt,
+          completedAt: action.timestamp,
+        },
       ];
       const isLastStep = action.step === session.sequence.length - 1;
 
@@ -117,11 +125,13 @@ export default function useLiveness(
   canStartVerification,
   yaw,
   ear,
-  { challenges } = {},
+  { challenges, pose } = {},
 ) {
   const [session, dispatch] = useReducer(reducer, initialSession);
 
   const yawHistoryRef = useRef([]);
+  const telemetryRef = useRef([]);
+  const telemetryStartRef = useRef(null);
   const timeoutRef = useRef(null);
   const captureSettleCountRef = useRef(0);
 
@@ -149,6 +159,11 @@ export default function useLiveness(
     closedFrameCountRef.current = 0;
   }, []);
 
+  const resetTelemetry = useCallback(() => {
+    telemetryRef.current = [];
+    telemetryStartRef.current = null;
+  }, []);
+
   useEffect(() => {
     clearPendingTimeout();
     resetYawHistory();
@@ -170,6 +185,8 @@ export default function useLiveness(
       return;
     }
 
+    resetTelemetry();
+
     dispatch({
       type: "START_VERIFICATION",
       sequence: challenges ?? DEFAULT_CHALLENGES,
@@ -181,19 +198,27 @@ export default function useLiveness(
     clearPendingTimeout,
     resetYawHistory,
     resetBlinkDetector,
+    resetTelemetry,
   ]);
 
   const retry = useCallback(() => {
     clearPendingTimeout();
     resetYawHistory();
     resetBlinkDetector();
+    resetTelemetry();
     captureSettleCountRef.current = 0;
 
     dispatch({
       type: "START_VERIFICATION",
       sequence: challenges ?? DEFAULT_CHALLENGES,
     });
-  }, [clearPendingTimeout, resetYawHistory, resetBlinkDetector, challenges]);
+  }, [
+    clearPendingTimeout,
+    resetYawHistory,
+    resetBlinkDetector,
+    resetTelemetry,
+    challenges,
+  ]);
 
   useEffect(() => {
     if (session.status !== LIVENESS_STATES.PROMPT) return;
@@ -205,13 +230,35 @@ export default function useLiveness(
     return () => clearTimeout(timeoutId);
   }, [session.status]);
 
+  // Records one telemetry sample per processed frame while verification is
+  // actively running. `pose` carries the fuller per-frame signal
+  // (pitch/roll/per-eye EAR/face confidence) computed by useFaceMesh;
+  // yaw/ear are kept as separate args since they're also used directly by
+  // the challenge-evaluation logic below.
   useEffect(() => {
     yawHistoryRef.current.push(yaw);
 
     if (yawHistoryRef.current.length > HISTORY_SIZE) {
       yawHistoryRef.current.shift();
     }
-  }, [yaw]);
+
+    if (session.status !== LIVENESS_STATES.PROMPT) return;
+
+    if (telemetryStartRef.current == null) {
+      telemetryStartRef.current = performance.now();
+    }
+
+    telemetryRef.current.push({
+      t: Math.round(performance.now() - telemetryStartRef.current),
+      yaw,
+      pitch: pose?.pitch ?? 0,
+      roll: pose?.roll ?? 0,
+      ear_left: pose?.earLeft ?? ear ?? null,
+      ear_right: pose?.earRight ?? ear ?? null,
+      face_detected: canStartVerification,
+      face_confidence: pose?.faceConfidence ?? (canStartVerification ? 1 : 0),
+    });
+  }, [yaw, ear, pose, session.status, canStartVerification]);
 
   function evaluateChallenge(challenge) {
     console.log(challenge.type);
@@ -298,7 +345,10 @@ export default function useLiveness(
       if (isNeutral()) {
         resetYawHistory();
         resetBlinkDetector();
-        dispatch({ type: "NEUTRAL_REACHED" });
+        dispatch({
+          type: "NEUTRAL_REACHED",
+          timestamp: new Date().toISOString(),
+        });
       }
       return;
     }
@@ -324,6 +374,7 @@ export default function useLiveness(
         type: "COMPLETE_CHALLENGE",
         step: session.currentStep,
         challenge,
+        timestamp: new Date().toISOString(),
       });
       return;
     }
@@ -389,5 +440,6 @@ export default function useLiveness(
     isWaitingForNeutral: session.phase === PHASE.WAIT_FOR_NEUTRAL,
     isWaitingForTarget: session.phase === PHASE.WAIT_FOR_TARGET,
     isWaitingForCapture: session.phase === PHASE.WAIT_FOR_CAPTURE,
+    telemetryRef,
   };
 }

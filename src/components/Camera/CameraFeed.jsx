@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import useCamera from "../../hooks/useCamera";
-import useFaceMesh from "../../hooks/useFaceMesh";
+import useFaceMesh, { MEDIAPIPE_VERSION } from "../../hooks/useFaceMesh";
 import FaceGuide from "./FaceGuide";
 import useLiveness from "../../hooks/useLiveness";
-import useFaceRecognition from "../../hooks/useFaceRecognition";
+// Client-side face recognition (InsightFace via ONNX) is sidelined for now —
+// the backend generates embeddings from the uploaded frame instead. The
+// hook itself is left intact (see useFaceRecognition.js) so it can be
+// re-enabled later without rewriting it; it's just not part of the submit
+// flow below anymore.
 import { getFailureMessage } from "../../utils/livenessStates";
 import { mapBackendChallenges } from "../../utils/challengeMapper";
 import { getChallengeInstruction } from "../../utils/Challengeinstructions";
@@ -12,24 +16,24 @@ import { buildVerificationPayload } from "../../utils/buildVerificationPayload";
 import { evaluateLivenessResult } from "../../utils/evaluateLivenessResult";
 import { completeSession } from "../../services/identityVerification";
 import { useAuth } from "../../context/AuthContext";
+
 function CameraFeed({ verificationSession }) {
   const {
     videoRef,
     error,
-    capturedImage,
+    capture,
     captureFrame,
     stopCamera,
     clearCapture,
     addFrameToBuffer,
     clearFrameBuffer,
+    cameraSettingsRef,
   } = useCamera();
   const navigate = useNavigate();
   const hasCapturedRef = useRef(false);
   const bufferCanvasRef = useRef(document.createElement("canvas"));
-  const [verificationPayload, setVerificationPayload] = useState(null);
   const verificationStartedAtRef = useRef(null);
 
-  
   const qualityRef = useRef({
     multipleFacesDetected: false,
     faceLostDetected: false,
@@ -48,22 +52,32 @@ function CameraFeed({ verificationSession }) {
     neutralVisitedStepsRef.current = new Set();
   }
   const { completeLiveness } = useAuth();
-  const { generateEmbedding, isModelReady: isFaceModelReady } = useFaceRecognition();
   const {
     canvasRef,
-    latestLandmarksRef,
     faceCount,
     isFaceCentered,
     isFaceLargeEnough,
     canStartVerification,
     yaw,
     ear,
+    pitch,
+    roll,
+    earLeft,
+    earRight,
+    faceConfidence,
   } = useFaceMesh(videoRef);
 
   const challenges = useMemo(
     () => mapBackendChallenges(verificationSession.challenge_sequence),
     [verificationSession.challenge_sequence],
   );
+
+
+  const pose = useMemo(
+    () => ({ pitch, roll, earLeft, earRight, faceConfidence }),
+    [pitch, roll, earLeft, earRight, faceConfidence],
+  );
+
   const {
     state,
     sequence,
@@ -73,7 +87,8 @@ function CameraFeed({ verificationSession }) {
     phase,
     failureReason,
     retry,
-  } = useLiveness(canStartVerification, yaw, ear, { challenges });
+    telemetryRef,
+  } = useLiveness(canStartVerification, yaw, ear, { challenges, pose });
 
   if (!verificationSession) {
     return (
@@ -110,7 +125,6 @@ function CameraFeed({ verificationSession }) {
     clearFrameBuffer();
     clearCapture();
     hasCapturedRef.current = false;
-    setVerificationPayload(null);
     verificationStartedAtRef.current = null;
     resetLivenessEvidence();
     retry();
@@ -128,20 +142,19 @@ function CameraFeed({ verificationSession }) {
     if (faceCount === 1 && !isFaceLargeEnough) qualityRef.current.tooSmallBroke = true;
   }, [state, faceCount, isFaceCentered, isFaceLargeEnough]);
 
-  // Record, per step index, that WAIT_FOR_NEUTRAL -> WAIT_FOR_TARGET was
-  // actually observed before that step's challenge was evaluated — i.e. the
-  // user genuinely returned to neutral, not just that the reducer's phase
-  // field currently claims so.
+
   useEffect(() => {
     if (phase === "WAIT_FOR_TARGET") {
       neutralVisitedStepsRef.current.add(currentStep);
     }
   }, [phase, currentStep]);
+
   useEffect(() => {
     if (state === "PROMPT" && !verificationStartedAtRef.current) {
       verificationStartedAtRef.current = new Date().toISOString();
     }
   }, [state]);
+
   useEffect(() => {
     if (state !== "SUCCESS") {
       hasCapturedRef.current = false;
@@ -154,28 +167,8 @@ function CameraFeed({ verificationSession }) {
 
     async function submitVerification() {
       try {
-        const capture = await captureFrame();
-        const capturedLandmarks = latestLandmarksRef.current;
+        const capturedFrame = await captureFrame();
         const completedAt = new Date().toISOString();
-
-        // Best-effort: a failed/slow embedding should not block submission
-        // of the liveness result itself, so this never throws out of here.
-        let faceEmbedding = null;
-        try {
-          const blob = capture?.blob ?? capture;
-          console.log("blob",blob)
-          if (blob) {
-            const bitmap = await createImageBitmap(blob);
-            console.log("bitmap",bitmap)
-            try {
-              faceEmbedding = await generateEmbedding(bitmap, capturedLandmarks);
-            } finally {
-              bitmap.close?.();
-            }
-          }
-        } catch (embeddingError) {
-          console.error("❌ Face embedding generation failed:", embeddingError);
-        }
 
         const computedResult = evaluateLivenessResult({
           state,
@@ -186,19 +179,28 @@ function CameraFeed({ verificationSession }) {
           quality: qualityRef.current,
           startedAt: verificationStartedAtRef.current,
           completedAt,
-          capturedImage: capture,
+          capturedImage: capturedFrame,
         });
+
+        if (computedResult !== "passed") {
+          console.warn(
+            "❌ Liveness result computed as failed client-side — not submitting.",
+          );
+          return;
+        }
 
         const payload = buildVerificationPayload({
           verificationSession,
           completedChallenges,
+          telemetry: telemetryRef.current,
+          capture: capturedFrame,
           startedAt: verificationStartedAtRef.current,
           completedAt,
-          computedResult,
-          faceEmbedding,
+          camera: cameraSettingsRef.current,
+          detector: { provider: "MediaPipe", version: MEDIAPIPE_VERSION },
         });
 
-        console.log("🚀 Verification Payload");
+        console.log("🚀 Verification Payload", payload);
 
         const response = await completeSession(
           verificationSession.session_id,
@@ -206,17 +208,7 @@ function CameraFeed({ verificationSession }) {
         );
         completeLiveness();
 
-        navigate("/home", {
-          replace: true,
-          state: {
-            verification: response,
-          },
-        });
-
-        console.log("✅ Backend Response");
-        console.log(response);
-
-        setVerificationPayload(response);
+        console.log("✅ Backend Response", response);
 
         stopCamera();
 
@@ -242,7 +234,8 @@ function CameraFeed({ verificationSession }) {
     stopCamera,
     verificationSession,
     navigate,
-    generateEmbedding,
+    telemetryRef,
+    cameraSettingsRef,
   ]);
 
   useEffect(() => {
@@ -371,17 +364,6 @@ function CameraFeed({ verificationSession }) {
       >
         Session: {verificationSession.session_id}
       </div>
-      {!isFaceModelReady && (
-        <div
-          style={{
-            marginTop: "4px",
-            fontSize: "12px",
-            color: "#6b7280",
-          }}
-        >
-          Loading face recognition model…
-        </div>
-      )}
       {state !== "SUCCESS" && (
         <div
           style={{
@@ -481,7 +463,7 @@ function CameraFeed({ verificationSession }) {
               }}
             >
               ✅ Liveness Passed
-              {capturedImage && (
+              {capture && (
                 <div
                   style={{
                     marginTop: "20px",
@@ -489,7 +471,7 @@ function CameraFeed({ verificationSession }) {
                   }}
                 >
                   <img
-                    src={capturedImage.url}
+                    src={capture.url}
                     alt="Captured Face"
                     style={{
                       width: "220px",

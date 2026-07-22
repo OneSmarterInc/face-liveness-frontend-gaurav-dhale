@@ -16,14 +16,16 @@ function toError(err, fallbackMessage) {
       return new Error("Permission denied.");
     case 404:
       return new Error("Verification session not found.");
+    case 413:
+      return new Error("Captured image is too large.");
+    case 415:
+      return new Error("Unsupported image format.");
     case 429:
       return new Error("Too many requests. Please try again later.");
     case 500:
       return new Error("Internal server error.");
     default:
-      return new Error(
-        data?.detail || data?.message || fallbackMessage
-      );
+      return new Error(data?.detail || data?.message || fallbackMessage);
   }
 }
 
@@ -36,11 +38,20 @@ export async function createSession() {
   }
 }
 
+/**
+ * Completes a verification session.
+ *
+ * New architecture: the client uploads a single JSON body containing the
+ * captured frame (base64 JPEG, in `payload.capture.image`) plus the full
+ * evidence bundle (session/client/camera/detector metadata, challenge
+ * timing, telemetry). Face alignment, InsightFace, embedding generation,
+ * and compare/register all happen server-side.
+ */
 export async function completeSession(sessionId, payload) {
   try {
     const response = await postInstance(
       `/identity/sessions/${sessionId}/complete/`,
-      payload
+      payload,
     );
     return response.data;
   } catch (err) {
