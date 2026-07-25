@@ -77,5 +77,6 @@ export function buildVerificationPayload({
       // Base64-encoded JPEG (no data-URL prefix).
       image: capture?.base64 ?? null,
     },
+    "schema_version": "1.0"
   };
 }

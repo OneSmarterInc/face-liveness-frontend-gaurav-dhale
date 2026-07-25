@@ -18,6 +18,14 @@ const CAPTURE_SETTLE_FRAMES = 5;
 
 export const VERIFICATION_TIMEOUT_MS = 30000;
 
+const TELEMETRY_SAMPLE_RATE =
+  Number(import.meta.env.VITE_TELEMETRY_SAMPLE_RATE) || 15;
+
+const STATIC_CHALLENGE_HOLD_MS =
+  Number(import.meta.env.VITE_STATIC_CHALLENGE_HOLD_MS) || 700;
+
+const TELEMETRY_SAMPLE_INTERVAL_MS = 1000 / TELEMETRY_SAMPLE_RATE;
+
 const PHASE = {
   WAIT_FOR_NEUTRAL: "WAIT_FOR_NEUTRAL",
   WAIT_FOR_TARGET: "WAIT_FOR_TARGET",
@@ -135,11 +143,10 @@ export default function useLiveness(
   const timeoutRef = useRef(null);
   const captureSettleCountRef = useRef(0);
 
-  // Blink is a two-phase state machine: we first wait to see the eyes read
-  // as closed for a few consecutive frames, then wait for them to reopen.
-  // Only a full close -> reopen cycle counts as a blink; a single "eyes are
-  // currently shut" frame does not (that's indistinguishable from a photo of
-  // someone with their eyes shut, or a stale reading).
+  const lastTelemetrySampleRef = useRef(0);
+
+  const staticChallengeStartedRef = useRef(null);
+
   const blinkStageRef = useRef("WAITING_FOR_CLOSE");
   const closedFrameCountRef = useRef(0);
 
@@ -162,6 +169,7 @@ export default function useLiveness(
   const resetTelemetry = useCallback(() => {
     telemetryRef.current = [];
     telemetryStartRef.current = null;
+    lastTelemetrySampleRef.current = 0;
   }, []);
 
   useEffect(() => {
@@ -186,7 +194,7 @@ export default function useLiveness(
     }
 
     resetTelemetry();
-
+    staticChallengeStartedRef.current = null;
     dispatch({
       type: "START_VERIFICATION",
       sequence: challenges ?? DEFAULT_CHALLENGES,
@@ -207,6 +215,7 @@ export default function useLiveness(
     resetBlinkDetector();
     resetTelemetry();
     captureSettleCountRef.current = 0;
+    staticChallengeStartedRef.current = null;
 
     dispatch({
       type: "START_VERIFICATION",
@@ -248,8 +257,19 @@ export default function useLiveness(
       telemetryStartRef.current = performance.now();
     }
 
+    const now = performance.now();
+
+    if (
+      lastTelemetrySampleRef.current &&
+      now - lastTelemetrySampleRef.current < TELEMETRY_SAMPLE_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    lastTelemetrySampleRef.current = now;
+
     telemetryRef.current.push({
-      t: Math.round(performance.now() - telemetryStartRef.current),
+      t: Math.round(now - telemetryStartRef.current),
       yaw,
       pitch: pose?.pitch ?? 0,
       roll: pose?.roll ?? 0,
@@ -345,6 +365,7 @@ export default function useLiveness(
       if (isNeutral()) {
         resetYawHistory();
         resetBlinkDetector();
+        staticChallengeStartedRef.current = null;
         dispatch({
           type: "NEUTRAL_REACHED",
           timestamp: new Date().toISOString(),
@@ -366,8 +387,31 @@ export default function useLiveness(
         return;
       }
 
+      const isStatic =
+        challenge.type === ChallengeType.CENTER_FACE ||
+        challenge.type === ChallengeType.HOLD_STILL;
+
       if (!evaluateChallenge(challenge)) {
+        staticChallengeStartedRef.current = null;
         return;
+      }
+
+      if (isStatic) {
+        const now = performance.now();
+
+        if (staticChallengeStartedRef.current == null) {
+          staticChallengeStartedRef.current = now;
+          return;
+        }
+
+        if (
+          now - staticChallengeStartedRef.current <
+          STATIC_CHALLENGE_HOLD_MS
+        ) {
+          return;
+        }
+      } else {
+        staticChallengeStartedRef.current = null;
       }
 
       dispatch({
@@ -376,6 +420,8 @@ export default function useLiveness(
         challenge,
         timestamp: new Date().toISOString(),
       });
+
+      staticChallengeStartedRef.current = null;
       return;
     }
 
