@@ -38,15 +38,6 @@ export async function createSession() {
   }
 }
 
-/**
- * Completes a verification session.
- *
- * New architecture: the client uploads a single JSON body containing the
- * captured frame (base64 JPEG, in `payload.capture.image`) plus the full
- * evidence bundle (session/client/camera/detector metadata, challenge
- * timing, telemetry). Face alignment, InsightFace, embedding generation,
- * and compare/register all happen server-side.
- */
 export async function completeSession(sessionId, payload) {
   try {
     const response = await postInstance(
@@ -65,5 +56,32 @@ export async function getSession(sessionId) {
     return response.data;
   } catch (err) {
     throw toError(err, "Unable to fetch verification session.");
+  }
+}
+
+
+export async function registerFace(sessionId, base64Image) {
+  try {
+    const response = await postInstance("/identity/register/", {
+      session_id: sessionId,
+      capture: { image: base64Image },
+    });
+    return response.data;
+  } catch (err) {
+    throw toError(err, "Unable to register face.");
+  }
+}
+
+
+export async function verifyFace(sessionId, base64Image, reason = "VERIFY") {
+  try {
+    const response = await postInstance("/identity/verify/", {
+      session_id: sessionId,
+      capture: { image: base64Image },
+      reason,
+    });
+    return response.data;
+  } catch (err) {
+    throw toError(err, "Unable to verify face.");
   }
 }

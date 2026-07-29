@@ -86,6 +86,19 @@ function LivenessCheck() {
     setProgress({ current: 0, total: 5, label: "Get ready" });
   };
 
+  // Called when the backend rejects a completed verification (liveness
+  // failed / session not completed). Creates a brand new session the same
+  // way the initial "Start Verification" click does. The new session_id is
+  // used as CameraFeed's key, so React unmounts the old instance (camera,
+  // face mesh, and liveness state machine all torn down) and mounts a fresh
+  // one against the new session — same as starting from scratch.
+  const handleRetrySession = async () => {
+    const session = await createSession();
+    setVerificationSession(session);
+    setProgress({ current: 0, total: 5, label: "Get ready" });
+    return session;
+  };
+
   return (
     <div
       style={{
@@ -325,8 +338,10 @@ function LivenessCheck() {
             }}
           >
             <CameraFeed
+              key={verificationSession?.session_id}
               verificationSession={verificationSession}
               onProgressChange={setProgress}
+              onRetry={handleRetrySession}
             />
           </div>
         </div>

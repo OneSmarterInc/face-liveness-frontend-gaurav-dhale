@@ -4,11 +4,9 @@ import useCamera from "../../hooks/useCamera";
 import useFaceMesh, { MEDIAPIPE_VERSION } from "../../hooks/useFaceMesh";
 import FaceGuide from "./FaceGuide";
 import useLiveness from "../../hooks/useLiveness";
-// Client-side face recognition (InsightFace via ONNX) is sidelined for now —
-// the backend generates embeddings from the uploaded frame instead. The
-// hook itself is left intact (see useFaceRecognition.js) so it can be
-// re-enabled later without rewriting it; it's just not part of the submit
-// flow below anymore.
+import useFaceRecognition from "../../hooks/useFaceRecognition";
+import StatusIndicator from "../UI/StatusIndicator";
+import { VERIFICATION_STEP } from "../../utils/verificationStatus";
 import { getFailureMessage } from "../../utils/livenessStates";
 import { mapBackendChallenges } from "../../utils/challengeMapper";
 import { getChallengeInstruction } from "../../utils/Challengeinstructions";
@@ -17,7 +15,7 @@ import { evaluateLivenessResult } from "../../utils/evaluateLivenessResult";
 import { completeSession } from "../../services/identityVerification";
 import { useAuth } from "../../context/AuthContext";
 
-function CameraFeed({ verificationSession }) {
+function CameraFeed({ verificationSession, onRetry }) {
   const {
     videoRef,
     error,
@@ -29,10 +27,17 @@ function CameraFeed({ verificationSession }) {
     clearFrameBuffer,
     cameraSettingsRef,
   } = useCamera();
+  const [verificationStatus, setVerificationStatus] = useState("running");
+  const [verificationStep, setVerificationStep] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
   const navigate = useNavigate();
   const hasCapturedRef = useRef(false);
   const bufferCanvasRef = useRef(document.createElement("canvas"));
   const verificationStartedAtRef = useRef(null);
+  const lastCapturedImageRef = useRef(null);
+
+  const { register: registerFaceRecognition } = useFaceRecognition();
 
   const qualityRef = useRef({
     multipleFacesDetected: false,
@@ -72,7 +77,6 @@ function CameraFeed({ verificationSession }) {
     [verificationSession.challenge_sequence],
   );
 
-
   const pose = useMemo(
     () => ({ pitch, roll, earLeft, earRight, faceConfidence }),
     [pitch, roll, earLeft, earRight, faceConfidence],
@@ -104,11 +108,6 @@ function CameraFeed({ verificationSession }) {
     );
   }
 
-  useEffect(() => {
-    console.log("Verification Session Created");
-    console.log(verificationSession);
-  }, [verificationSession]);
-
   const getStatus = () => {
     if (faceCount === 0) return "No Face Detected";
 
@@ -130,18 +129,55 @@ function CameraFeed({ verificationSession }) {
     retry();
   };
 
-  // Track whether the face conditions ever broke while verification was
-  // actively running. Only recorded while PROMPT is active — this isn't
-  // meant to flag the brief pre-start state before a face is even found.
+  const handleBackendRetry = async () => {
+    setRetryError("");
+    setIsRetrying(true);
+
+    try {
+      await onRetry();
+    } catch (err) {
+      console.error("Failed to start a new verification session:", err);
+      setRetryError(err.message || "Unable to start a new verification session.");
+      setIsRetrying(false);
+    }
+  };
+
+
+  const handleRetryRegistration = async () => {
+    if (!lastCapturedImageRef.current) return;
+
+    setVerificationStep(VERIFICATION_STEP.REGISTRATION_STARTED);
+
+    try {
+      const response = await registerFaceRecognition(
+        verificationSession.session_id,
+        lastCapturedImageRef.current,
+      );
+
+      setVerificationStep(VERIFICATION_STEP.REGISTRATION_COMPLETE);
+      completeLiveness();
+      stopCamera();
+
+      navigate("/home", {
+        replace: true,
+        state: { verification: response },
+      });
+    } catch (err) {
+      console.error("Face registration retry failed:", err);
+      setVerificationStep(VERIFICATION_STEP.REGISTRATION_FAILED);
+    }
+  };
+
   useEffect(() => {
     if (state !== "PROMPT") return;
 
     if (faceCount > 1) qualityRef.current.multipleFacesDetected = true;
     if (faceCount === 0) qualityRef.current.faceLostDetected = true;
-    if (faceCount === 1 && !isFaceCentered) qualityRef.current.centeredBroke = true;
-    if (faceCount === 1 && !isFaceLargeEnough) qualityRef.current.tooSmallBroke = true;
+    if (faceCount === 1 && !isFaceCentered)
+      qualityRef.current.centeredBroke = true;
+    if (faceCount === 1 && !isFaceLargeEnough)
+      qualityRef.current.tooSmallBroke = true;
   }, [state, faceCount, isFaceCentered, isFaceLargeEnough]);
-
 
   useEffect(() => {
     if (phase === "WAIT_FOR_TARGET") {
@@ -167,6 +203,8 @@ function CameraFeed({ verificationSession }) {
 
     async function submitVerification() {
       try {
+        setVerificationStep(VERIFICATION_STEP.LIVENESS_CHECKING);
+
         const capturedFrame = await captureFrame();
         const completedAt = new Date().toISOString();
 
@@ -183,9 +221,6 @@ function CameraFeed({ verificationSession }) {
         });
 
         if (computedResult !== "passed") {
-          console.warn(
-            "❌ Liveness result computed as failed client-side — not submitting.",
-          );
           return;
         }
 
@@ -200,26 +235,71 @@ function CameraFeed({ verificationSession }) {
           detector: { provider: "MediaPipe", version: MEDIAPIPE_VERSION },
         });
 
-        console.log("🚀 Verification Payload", payload);
-
+        setVerificationStatus("submitting");
         const response = await completeSession(
           verificationSession.session_id,
           payload,
         );
-        completeLiveness();
 
         console.log("✅ Backend Response", response);
 
-        stopCamera();
+        const livenessPassed =
+          String(response?.liveness_result ?? "").toLowerCase() === "passed";
 
-        navigate("/home", {
-          replace: true,
-          state: {
-            verification: response,
-          },
-        });
+        const sessionCompleted =
+          String(response?.status ?? "").toLowerCase() === "completed";
+
+        if (!(livenessPassed && sessionCompleted)) {
+          // Backend says liveness failed (or the session otherwise didn't
+          // complete): turn the camera off immediately and surface the
+          // retry popup — retrying from here creates a brand new session.
+          console.warn("❌ Backend rejected liveness.", response);
+
+          setVerificationStep(VERIFICATION_STEP.LIVENESS_FAILED);
+
+          stopCamera();
+
+          setVerificationStatus("failed");
+
+          hasCapturedRef.current = false;
+
+          clearFrameBuffer();
+          clearCapture();
+          resetLivenessEvidence();
+
+          return;
+        }
+
+        setVerificationStatus("passed");
+        setVerificationStep(VERIFICATION_STEP.LIVENESS_COMPLETE);
+
+        lastCapturedImageRef.current = payload.capture.image;
+        setVerificationStep(VERIFICATION_STEP.REGISTRATION_STARTED);
+
+        try {
+          const registrationResponse = await registerFaceRecognition(
+            verificationSession.session_id,
+            payload.capture.image,
+          );
+
+          setVerificationStep(VERIFICATION_STEP.REGISTRATION_COMPLETE);
+
+          completeLiveness();
+          stopCamera();
+
+          navigate("/home", {
+            replace: true,
+            state: {
+              verification: response,
+              registration: registrationResponse,
+            },
+          });
+        } catch (registrationError) {
+          console.error("Face registration failed:", registrationError);
+          setVerificationStep(VERIFICATION_STEP.REGISTRATION_FAILED);
+          stopCamera();
+        }
       } catch (error) {
-        console.error("❌ Verification submission failed");
         console.error(error);
       }
     }
@@ -236,6 +316,8 @@ function CameraFeed({ verificationSession }) {
     navigate,
     telemetryRef,
     cameraSettingsRef,
+    completeLiveness,
+    registerFaceRecognition,
   ]);
 
   useEffect(() => {
@@ -295,6 +377,50 @@ function CameraFeed({ verificationSession }) {
           }}
         >
           Reload
+        </button>
+      </div>
+    );
+  }
+
+  if (verificationStatus === "failed") {
+    return (
+      <div
+        style={{
+          textAlign: "center",
+          color: "#f87171",
+          maxWidth: "360px",
+          padding: "24px",
+          borderRadius: "12px",
+          background: "#1a2332",
+        }}
+      >
+        <p style={{ fontSize: "16px", fontWeight: "bold", margin: 0 }}>
+          Liveness verification failed.
+        </p>
+        <p style={{ fontSize: "14px", color: "#9ca3af", marginTop: "8px" }}>
+          Please try again.
+        </p>
+
+        {retryError && (
+          <p style={{ fontSize: "13px", color: "#f87171", marginTop: "10px" }}>
+            {retryError}
+          </p>
+        )}
+
+        <button
+          onClick={handleBackendRetry}
+          disabled={isRetrying}
+          style={{
+            marginTop: "16px",
+            padding: "10px 20px",
+            fontSize: "16px",
+            cursor: isRetrying ? "not-allowed" : "pointer",
+            borderRadius: "8px",
+            border: "none",
+            opacity: isRetrying ? 0.7 : 1,
+          }}
+        >
+          {isRetrying ? "Starting new session..." : "Retry"}
         </button>
       </div>
     );
@@ -480,6 +606,25 @@ function CameraFeed({ verificationSession }) {
                     }}
                   />
                 </div>
+              )}
+
+              <StatusIndicator step={verificationStep} />
+
+              {verificationStep === VERIFICATION_STEP.REGISTRATION_FAILED && (
+                <button
+                  onClick={handleRetryRegistration}
+                  style={{
+                    marginTop: "16px",
+                    padding: "10px 20px",
+                    fontSize: "16px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    borderRadius: "8px",
+                    border: "none",
+                  }}
+                >
+                  Retry Registration
+                </button>
               )}
             </div>
           )}

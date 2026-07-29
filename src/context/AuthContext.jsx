@@ -6,10 +6,15 @@ const AuthContext = createContext(null);
 const AUTH_FLAG_COOKIE = "kormic_auth";
 const TOKEN_COOKIE = "kormic_auth_token";
 const REFRESH_COOKIE = "kormic_refresh_token";
+const LIVENESS_COOKIE = "kormic_liveness";
 
 export function AuthProvider({ children }) {
-  const [isLivenessVerified, setIsLivenessVerified] = useState(false);
+  const [isLivenessVerified, setIsLivenessVerified] = useState(
+    () => getCookie(LIVENESS_COOKIE) === "true",
+  );
+
   const completeLiveness = () => {
+    setCookie(LIVENESS_COOKIE, "true");
     setIsLivenessVerified(true);
   };
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -28,12 +33,14 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    removeCookie(AUTH_FLAG_COOKIE);
-    removeCookie(TOKEN_COOKIE);
-    removeCookie(REFRESH_COOKIE);
-    setIsAuthenticated(false);
-    setIsLivenessVerified(false);
-  };
+  removeCookie(AUTH_FLAG_COOKIE);
+  removeCookie(TOKEN_COOKIE);
+  removeCookie(REFRESH_COOKIE);
+  removeCookie(LIVENESS_COOKIE);
+
+  setIsAuthenticated(false);
+  setIsLivenessVerified(false);
+};
 
   return (
     <AuthContext.Provider
