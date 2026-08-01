@@ -10,6 +10,7 @@ const REFRESH_COOKIE = "kormic_refresh_token";
 const axiosInstance = axios.create({
     baseURL: BASE_URL,
     withCredentials: true,
+    timeout: 20000,
     headers: {
         "Content-Type": "application/json",
     },

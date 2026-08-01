@@ -8,6 +8,8 @@ const TOKEN_COOKIE = "kormic_auth_token";
 const REFRESH_COOKIE = "kormic_refresh_token";
 const LIVENESS_COOKIE = "kormic_liveness";
 
+const FACE_STAGE_COOKIE = "kormic_face_stage";
+
 export function AuthProvider({ children }) {
   const [isLivenessVerified, setIsLivenessVerified] = useState(
     () => getCookie(LIVENESS_COOKIE) === "true",
@@ -20,6 +22,17 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => getCookie(AUTH_FLAG_COOKIE) === "true",
   );
+
+  const [faceStage, setFaceStageState] = useState(() => getCookie(FACE_STAGE_COOKIE) || null);
+
+  const setFaceStage = (stage) => {
+    if (stage) {
+      setCookie(FACE_STAGE_COOKIE, stage);
+    } else {
+      removeCookie(FACE_STAGE_COOKIE);
+    }
+    setFaceStageState(stage || null);
+  };
 
   const login = ({ accessToken, refreshToken } = {}) => {
     setCookie(AUTH_FLAG_COOKIE, "true");
@@ -37,9 +50,11 @@ export function AuthProvider({ children }) {
   removeCookie(TOKEN_COOKIE);
   removeCookie(REFRESH_COOKIE);
   removeCookie(LIVENESS_COOKIE);
+  removeCookie(FACE_STAGE_COOKIE);
 
   setIsAuthenticated(false);
   setIsLivenessVerified(false);
+  setFaceStageState(null);
 };
 
   return (
@@ -48,6 +63,8 @@ export function AuthProvider({ children }) {
         isAuthenticated,
         isLivenessVerified,
         completeLiveness,
+        faceStage,
+        setFaceStage,
         login,
         logout,
       }}

@@ -11,9 +11,14 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, setFaceStage } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const FACE_ROUTE_FOR_STEP = {
+    FACE_REGISTRATION: "/face-registration",
+    FACE_VERIFICATION: "/face-verification",
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,7 +51,10 @@ function Login() {
       const refreshToken = data?.refresh_token || data?.refresh;
       login({ accessToken, refreshToken });
 
-      const redirectTo = location.state?.from?.pathname || "/face-liveness";
+      const nextStep = data?.next_step;
+      setFaceStage(nextStep);
+
+      const redirectTo = FACE_ROUTE_FOR_STEP[nextStep] || "/face-verification";
       navigate(redirectTo, { replace: true });
     } catch (err) {
       const responseData = err.response?.data;

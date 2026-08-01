@@ -3,7 +3,8 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import GuestRoute from "./routes/GuestRoute";
 import Home from "./pages/Home";
-import LivenessCheck from "./pages/LivenessCheck";
+import FaceRegistration from "./pages/FaceRegistration";
+import FaceVerification from "./pages/FaceVerification";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import TotpEnroll from "./pages/TotpEnroll";
@@ -14,7 +15,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/face-liveness" replace />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
           <Route
             path="/login"
             element={
@@ -33,11 +34,20 @@ function App() {
           />
           <Route path="/verify-totp" element={<VerifyTotp />} />
           <Route path="/totp-enroll" element={<TotpEnroll />} />
+
           <Route
-            path="/face-liveness"
+            path="/face-registration"
             element={
               <ProtectedRoute>
-                <LivenessCheck />
+                <FaceRegistration />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/face-verification"
+            element={
+              <ProtectedRoute>
+                <FaceVerification />
               </ProtectedRoute>
             }
           />
