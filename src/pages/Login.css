@@ -19,6 +19,7 @@
     background: #1a2332;
     padding: 40px 36px;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
 }
 
 .login-icon {
@@ -64,6 +65,8 @@
 }
 
 .login-input {
+    width: 100%;
+    box-sizing: border-box;
     border-radius: 10px;
     border: 1px solid #374151;
     background: #111827;
@@ -182,4 +185,155 @@
 
 .signup-link:hover {
     text-decoration: underline;
+}
+
+
+
+
+
+
+
+
+
+/* =========================================================
+   RESPONSIVE STYLES
+   Desktop (1024px+) remains unchanged.
+   ========================================================= */
+
+/* Tablet Landscape / Small Laptop */
+@media screen and (max-width: 1023px) {
+    .login-page {
+        padding: 24px;
+    }
+
+    .login-card {
+        max-width: 420px;
+    }
+}
+
+/* Tablet */
+@media screen and (max-width: 768px) {
+
+    .login-page {
+        padding: 20px;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 32px 28px;
+        gap: 22px;
+    }
+
+    .login-title {
+        font-size: 20px;
+    }
+
+    .login-subtitle {
+        font-size: 13px;
+    }
+
+    .login-input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* Mobile */
+@media screen and (max-width: 480px) {
+
+    .login-page {
+        padding: 16px;
+        align-items: center;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 100%;
+        padding: 28px 20px;
+        border-radius: 16px;
+        gap: 18px;
+    }
+
+    .login-icon {
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+    }
+
+    .login-title {
+        font-size: 20px;
+    }
+
+    .login-subtitle {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .login-label {
+        font-size: 13px;
+    }
+
+    .login-input {
+        width: 100%;
+        font-size: 14px;
+        padding: 12px;
+        box-sizing: border-box;
+    }
+
+    .password-input {
+        padding-right: 42px;
+    }
+
+    .password-toggle-btn {
+        right: 10px;
+    }
+
+    .login-button {
+        width: 100%;
+        padding: 13px;
+        font-size: 15px;
+    }
+
+    .signup-footer-text {
+        font-size: 13px;
+    }
+}
+
+/* Very Small Devices */
+@media screen and (max-width: 360px) {
+
+    .login-page {
+        padding: 12px;
+    }
+
+    .login-card {
+        padding: 22px 16px;
+        gap: 16px;
+    }
+
+    .login-title {
+        font-size: 18px;
+    }
+
+    .login-subtitle {
+        font-size: 12px;
+    }
+
+    .login-label {
+        font-size: 12px;
+    }
+
+    .login-input {
+        font-size: 13px;
+    }
+
+    .login-button {
+        font-size: 14px;
+        padding: 12px;
+    }
+
+    .signup-footer-text {
+        font-size: 12px;
+    }
 }

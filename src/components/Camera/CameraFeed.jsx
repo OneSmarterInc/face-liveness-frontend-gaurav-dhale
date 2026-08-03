@@ -490,12 +490,14 @@ function CameraFeed({ verificationSession, onRetry, mode, onSubmit }) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        width: "100%",
       }}
     >
       <div
         style={{
           position: "relative",
-          width: "500px",
+          width: "100%",
+          maxWidth: "500px",
           aspectRatio: "4 / 3",
           overflow: "hidden",
         }}

@@ -3,6 +3,7 @@ import CameraFeed from "../components/Camera/CameraFeed";
 import { createSession } from "../services/identityVerification";
 import useFaceRecognition from "../hooks/useFaceRecognition";
 import { useAuth } from "../context/AuthContext";
+import "../css/FaceRegistration.css";
 
 const ACCENT = "#3b82f6";
 
@@ -20,34 +21,9 @@ const INSTRUCTIONS = [
 
 function InstructionRow({ icon, text }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        padding: "12px 14px",
-        background: "#1a2332",
-        borderRadius: "10px",
-        marginBottom: "10px",
-      }}
-    >
-      <div
-        style={{
-          flexShrink: 0,
-          width: "30px",
-          height: "30px",
-          borderRadius: "8px",
-          background: "#243244",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "14px",
-          color: ACCENT,
-        }}
-      >
-        {icon}
-      </div>
-      <span style={{ color: "#d1d5db", fontSize: "14px" }}>{text}</span>
+    <div className="instruction-row">
+      <div className="instruction-icon">{icon}</div>
+      <span className="instruction-text">{text}</span>
     </div>
   );
 }
@@ -102,97 +78,33 @@ function FaceRegistration() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        background: "#111827",
-        position: "relative",
-      }}
-    >
+    <div className="face-reg-root">
       {!isVerificationStarted ? (
         // ----- Pre-registration: split-screen instructions -----
-        <div
-          style={{
-            display: "flex",
-            width: "100%",
-            minHeight: "100vh",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="face-reg-split">
           {/* Left: instructions */}
-          <div
-            style={{
-              flex: "1 1 380px",
-              maxWidth: "480px",
-              display: "flex",
-              flexDirection: "column",
-              borderRight: "1px solid #1f2937",
-            }}
-          >
-            <div style={{ padding: "28px 24px 20px", textAlign: "center" }}>
-              <div
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  background: ACCENT,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "20px",
-                  margin: "0 auto 14px",
-                }}
-              >
-                📋
-              </div>
-              <h1
-                style={{
-                  color: "#f9fafb",
-                  fontSize: "19px",
-                  fontWeight: 700,
-                  margin: "0 0 6px",
-                }}
-              >
-                Set Up Face Login
-              </h1>
-              <p style={{ color: ACCENT, fontSize: "13px", fontWeight: 600, margin: 0 }}>
+          <div className="face-reg-instructions-panel">
+            <div className="face-reg-instructions-header">
+              <div className="face-reg-header-icon">📋</div>
+              <h1 className="face-reg-title">Set Up Face Login</h1>
+              <p className="face-reg-subtitle">
                 This is a one-time setup. Read the instructions carefully.
               </p>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "4px 20px" }}>
+            <div className="face-reg-instructions-list">
               {INSTRUCTIONS.map((item, i) => (
                 <InstructionRow key={i} {...item} />
               ))}
             </div>
 
-            <div
-              style={{
-                padding: "16px 20px 24px",
-                borderTop: "1px solid #1f2937",
-              }}
-            >
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  color: "#f3f4f6",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
+            <div className="face-reg-consent">
+              <label className="face-reg-checkbox-label">
                 <input
                   type="checkbox"
                   checked={hasAgreed}
                   onChange={(e) => setHasAgreed(e.target.checked)}
-                  style={{
-                    width: "17px",
-                    height: "17px",
-                    accentColor: ACCENT,
-                  }}
+                  className="face-reg-checkbox"
                 />
                 I have read and understood all the instructions.
               </label>
@@ -200,31 +112,18 @@ function FaceRegistration() {
           </div>
 
           {/* Right: start action */}
-          <div
-            style={{
-              flex: "2 1 500px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#0d1420",
-            }}
-          >
-            <div style={{ textAlign: "center" }}>
+          <div className="face-reg-action-panel">
+            <div className="face-reg-action-inner">
               <button
                 onClick={handleStartVerification}
                 disabled={isCreatingSession || !hasAgreed}
+                className="face-reg-start-btn"
                 style={{
-                  padding: "16px 36px",
-                  fontSize: "16px",
-                  fontWeight: 600,
                   cursor:
                     isCreatingSession || !hasAgreed ? "not-allowed" : "pointer",
-                  borderRadius: "10px",
-                  border: "none",
                   background: hasAgreed ? ACCENT : "#4b5563",
                   color: hasAgreed ? "#ffffff" : "#9ca3af",
                   opacity: isCreatingSession ? 0.7 : 1,
-                  transition: "background 0.15s ease",
                 }}
               >
                 {isCreatingSession
@@ -232,113 +131,44 @@ function FaceRegistration() {
                   : "Register My Face"}
               </button>
 
-              <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "14px" }}>
+              <p className="face-reg-hint">
                 {hasAgreed
                   ? "Ready when you are."
                   : "Please confirm you've read the instructions to continue."}
               </p>
 
-              {error && (
-                <p style={{ color: "#ef4444", fontSize: "13px", marginTop: "10px" }}>
-                  {error}
-                </p>
-              )}
+              {error && <p className="face-reg-error">{error}</p>}
             </div>
           </div>
         </div>
       ) : (
         // ----- Registration in progress: collapsed sidebar + camera -----
-        <div
-          style={{
-            display: "flex",
-            width: "100%",
-            minHeight: "100vh",
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              flex: "1 1 260px",
-              maxWidth: "300px",
-              padding: "24px 20px",
-              borderRight: "1px solid #1f2937",
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px",
-            }}
-          >
+        <div className="face-reg-split">
+          <div className="face-reg-sidebar">
             <div>
-              <span
-                style={{
-                  color: ACCENT,
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
+              <span className="face-reg-step-label">
                 Step {progress.current} / {progress.total}
               </span>
-              <h2
-                style={{
-                  color: "#f9fafb",
-                  fontSize: "18px",
-                  fontWeight: 700,
-                  margin: "6px 0 0",
-                }}
-              >
-                {progress.label}
-              </h2>
+              <h2 className="face-reg-step-title">{progress.label}</h2>
             </div>
 
-            <div
-              style={{
-                height: "6px",
-                borderRadius: "999px",
-                background: "#1f2937",
-                overflow: "hidden",
-              }}
-            >
+            <div className="face-reg-progress-track">
               <div
-                style={{
-                  height: "100%",
-                  width: `${(progress.current / progress.total) * 100}%`,
-                  background: ACCENT,
-                  transition: "width 0.3s ease",
-                }}
+                className="face-reg-progress-fill"
+                style={{ width: `${(progress.current / progress.total) * 100}%` }}
               />
             </div>
 
-            <div style={{ color: "#9ca3af", fontSize: "13px", lineHeight: 1.6 }}>
+            <div className="face-reg-tip">
               💡 Move slowly and keep your face centered in the frame.
             </div>
 
-            <button
-              onClick={handleStopVerification}
-              style={{
-                marginTop: "auto",
-                padding: "12px 20px",
-                fontSize: "15px",
-                cursor: "pointer",
-                borderRadius: "8px",
-                border: "1px solid #374151",
-                background: "transparent",
-                color: "#e5e7eb",
-              }}
-            >
+            <button onClick={handleStopVerification} className="face-reg-cancel-btn">
               Cancel registration
             </button>
           </div>
 
-          <div
-            style={{
-              flex: "2 1 500px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#0d1420",
-            }}
-          >
+          <div className="face-reg-camera-panel">
             <CameraFeed
               key={verificationSession?.session_id}
               verificationSession={verificationSession}

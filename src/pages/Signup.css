@@ -9,3 +9,53 @@
     padding: 12px;
     font-size: 15px;
 }
+
+/* =========================================================
+   Responsive Styles
+   Desktop (1024px+) remains unchanged.
+   ========================================================= */
+
+@media screen and (max-width: 1023px) {
+
+    .signup-card {
+        max-width: 420px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+
+    .signup-card {
+        width: 100%;
+        max-width: 420px;
+    }
+
+    .signup-card .login-button {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+@media screen and (max-width: 480px) {
+
+    .signup-card {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .signup-card .login-button {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+@media screen and (max-width: 360px) {
+
+    .signup-card {
+        width: 100%;
+    }
+
+    .signup-card .login-button {
+        width: 100%;
+        max-width: 100%;
+    }
+}

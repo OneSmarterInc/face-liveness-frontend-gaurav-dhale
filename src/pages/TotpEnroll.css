@@ -138,3 +138,145 @@
     color: #e5e7eb;
     border-color: #2563eb;
 }
+
+
+
+
+/* =========================================================
+   Responsive Styles
+   Desktop (1024px+) remains unchanged.
+   ========================================================= */
+
+/* Tablet */
+@media screen and (max-width: 1023px) {
+
+    .totp-enroll-card {
+        max-width: 720px;
+        margin: 20px auto;
+    }
+
+    .totp-enroll-columns {
+        gap: 24px;
+    }
+}
+
+/* Tablets */
+@media screen and (max-width: 768px) {
+
+    .totp-enroll-page {
+        padding: 20px;
+    }
+
+    .totp-enroll-card {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 32px 24px;
+    }
+
+    .totp-enroll-columns {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .totp-enroll-col-left,
+    .totp-enroll-col-right {
+        width: 100%;
+    }
+
+    .totp-qr-box {
+        max-width: 240px;
+        margin: 0 auto;
+    }
+
+    .totp-secret-box {
+        width: 100%;
+    }
+
+    .totp-button {
+        width: 100%;
+    }
+}
+
+/* Mobile */
+@media screen and (max-width: 480px) {
+
+    .totp-enroll-page {
+        padding: 16px;
+    }
+
+    .totp-enroll-card {
+        padding: 24px 18px;
+        border-radius: 16px;
+    }
+
+    .totp-enroll-columns {
+        gap: 20px;
+    }
+
+    .totp-qr-box {
+        max-width: 200px;
+        padding: 12px;
+    }
+
+    .totp-qr-image {
+        max-width: 160px;
+    }
+
+    .totp-secret-box {
+        padding: 12px;
+    }
+
+    .totp-secret-text {
+        font-size: 13px;
+    }
+
+    .totp-enroll-instructions {
+        font-size: 12px;
+    }
+
+    .totp-status {
+        font-size: 13px;
+    }
+
+    .totp-copy-btn {
+        width: 100%;
+    }
+
+    .totp-input {
+        font-size: 14px;
+    }
+
+    .totp-button {
+        width: 100%;
+    }
+}
+
+/* Very Small Devices */
+@media screen and (max-width: 360px) {
+
+    .totp-enroll-page {
+        padding: 12px;
+    }
+
+    .totp-enroll-card {
+        padding: 20px 16px;
+    }
+
+    .totp-qr-box {
+        max-width: 180px;
+    }
+
+    .totp-qr-image {
+        max-width: 140px;
+    }
+
+    .totp-secret-text {
+        font-size: 12px;
+    }
+
+    .totp-copy-btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+}

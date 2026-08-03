@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 .totp-page {
     min-height: 100vh;
     display: flex;
@@ -6,6 +12,7 @@
     padding: 24px;
     font-family: Inter, Arial, sans-serif;
     background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b1120 60%);
+    overflow-x: hidden;
 }
 
 .totp-card {
@@ -44,6 +51,9 @@
     font-size: 22px;
     font-weight: 700;
     color: #f9fafb;
+
+    line-height: 1.3;
+    word-break: break-word;
 }
 
 .totp-subtitle {
@@ -61,6 +71,7 @@
     font-size: 14px;
     font-weight: 500;
     color: #d1d5db;
+    text-align: center;
 }
 
 .totp-input {
@@ -156,6 +167,8 @@
     color: #f9fafb;
     font-size: 24px;
     font-weight: 700;
+    line-height: 1.3;
+    word-break: break-word;
 }
 
 .transition-description {
@@ -227,5 +240,57 @@
 
     to {
         width: 100%;
+    }
+}
+
+
+
+
+/* ==========================================
+   Mobile Responsive
+========================================== */
+
+@media (max-width: 480px) {
+
+    .totp-page {
+        align-items: center;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .totp-card {
+        margin: 24px auto;
+        padding: 28px 20px;
+        max-width: 100%;
+    }
+
+    .totp-title {
+        font-size: 20px;
+        line-height: 1.3;
+        word-break: break-word;
+    }
+
+    .totp-subtitle {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .totp-input {
+        font-size: 18px;
+        padding: 12px;
+    }
+
+    .totp-button {
+        padding: 14px;
+        font-size: 15px;
+    }
+
+    .transition-title {
+        font-size: 22px;
+    }
+
+    .transition-description {
+        font-size: 14px;
+        line-height: 1.6;
     }
 }

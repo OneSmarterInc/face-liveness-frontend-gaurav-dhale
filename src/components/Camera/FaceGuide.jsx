@@ -12,8 +12,10 @@ function FaceGuide() {
     >
       <div
         style={{
-          width: "260px",
-          height: "340px",
+          width: "52%",
+          height: "91%",
+          maxWidth: "260px",
+          maxHeight: "340px",
           border: "4px solid rgba(255,255,255,0.8)",
           borderRadius: "50%",
         }}
