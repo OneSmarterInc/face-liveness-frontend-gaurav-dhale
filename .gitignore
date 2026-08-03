@@ -31,3 +31,7 @@ dist-ssr
 *.h5
 *.tflite
 *.pb
+
+# Archives and text dumps
+*.zip
+*.txt
