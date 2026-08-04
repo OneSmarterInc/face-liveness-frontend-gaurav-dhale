@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getCookie, setCookie, removeCookie } from "../utils/cookies";
 
-const BASE_URL = "http://127.0.0.1:8000/api";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const AUTH_FLAG_COOKIE = "kormic_auth";
 const TOKEN_COOKIE = "kormic_auth_token";

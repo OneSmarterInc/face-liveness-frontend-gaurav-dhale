@@ -38,3 +38,6 @@ dist-ssr
 
 # Sensitive internal docs
 docs/
+
+# Environment variables
+.env
