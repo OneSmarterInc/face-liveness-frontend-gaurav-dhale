@@ -35,3 +35,6 @@ dist-ssr
 # Archives and text dumps
 *.zip
 *.txt
+
+# Sensitive internal docs
+docs/
