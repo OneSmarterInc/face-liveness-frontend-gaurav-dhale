@@ -325,8 +325,6 @@ function CameraFeed({ verificationSession, onRetry, mode, onSubmit }) {
           return;
         }
 
-        console.log("✅ Backend Response", response);
-
         const livenessPassed =
           String(response?.liveness_result ?? "").toLowerCase() === "passed";
 

@@ -50,7 +50,6 @@ axiosInstance.interceptors.request.use(async (config) => {
         }
 
         try {
-            console.log("Access token expired, refreshing...");
             const { data } = await axios.post(`${BASE_URL}/auth/refresh/`, {
                 refresh: refreshToken,
             });

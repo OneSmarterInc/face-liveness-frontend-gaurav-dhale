@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { postInstance } from "../services/apiCall";
+import { validateOtpCode } from "../utils/validators";
 import "./VerifyTotp.css";
 
 function VerifyTotp() {
@@ -54,8 +55,9 @@ function VerifyTotp() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!code.trim()) {
-      setError("Please enter your 6-digit code.");
+    const codeCheck = validateOtpCode(code);
+    if (!codeCheck.valid) {
+      setError(codeCheck.message);
       return;
     }
 

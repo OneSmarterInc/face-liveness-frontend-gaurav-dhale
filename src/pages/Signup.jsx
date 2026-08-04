@@ -2,6 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { postInstance } from "../services/apiCall";
+import {
+  validateName,
+  validateEmail,
+  validatePassword,
+  getPasswordStrength,
+} from "../utils/validators";
 import "./Login.css";
 import "./Signup.css";
 
@@ -16,11 +22,31 @@ function Signup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
+  const passwordStrength = getPasswordStrength(password);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!name.trim() || !email.trim() || !password.trim()) {
       setError("Please fill in all fields.");
+      return;
+    }
+
+    const nameCheck = validateName(name);
+    if (!nameCheck.valid) {
+      setError(nameCheck.message);
+      return;
+    }
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      setError(emailCheck.message);
+      return;
+    }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      setError(passwordCheck.message);
       return;
     }
 
@@ -133,6 +159,19 @@ function Signup() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          {password && (
+            <div className={`password-strength password-strength-${passwordStrength.score}`}>
+              <div className="password-strength-bar">
+                <span />
+                <span />
+                <span />
+              </div>
+              <span className="password-strength-label">{passwordStrength.label}</span>
+            </div>
+          )}
+          <p className="password-hint">
+            Use 8+ characters with uppercase, lowercase, a number, and a symbol.
+          </p>
         </div>
 
         {error && <div className="login-error">{error}</div>}

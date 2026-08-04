@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Copy, Check } from "lucide-react";
 import QRCode from "qrcode";
 import { postInstance } from "../services/apiCall";
+import { validateOtpCode } from "../utils/validators";
 import "./VerifyTotp.css";
 import "./TotpEnroll.css";
 
@@ -82,8 +83,9 @@ function TotpEnroll() {
   const handleConfirm = async (e) => {
     e.preventDefault();
 
-    if (!code.trim()) {
-      setError("Please enter the 6-digit code from your authenticator app.");
+    const codeCheck = validateOtpCode(code);
+    if (!codeCheck.valid) {
+      setError(codeCheck.message);
       return;
     }
 

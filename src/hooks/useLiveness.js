@@ -47,7 +47,6 @@ const initialSession = {
 function reducer(session, action) {
   switch (action.type) {
     case "START_VERIFICATION":
-      console.log("START_VERIFICATION");
       return {
         ...initialSession,
         sequence: action.sequence,
@@ -77,7 +76,6 @@ function reducer(session, action) {
       };
 
     case "COMPLETE_CHALLENGE": {
-      console.log("COMPLETE_CHALLENGE", action.challenge.type);
       if (session.phase !== PHASE.WAIT_FOR_TARGET) return session;
       if (action.step !== session.currentStep) return session;
 
@@ -103,7 +101,6 @@ function reducer(session, action) {
     }
 
     case "ADVANCE_STEP": {
-      console.log("ADVANCE_STEP", session.currentStep);
       if (session.phase !== PHASE.TRANSITIONING) return session;
       if (action.step !== session.currentStep) return session;
 
@@ -281,7 +278,6 @@ export default function useLiveness(
   }, [yaw, ear, pose, session.status, canStartVerification]);
 
   function evaluateChallenge(challenge) {
-    console.log(challenge.type);
     switch (challenge.type) {
       case ChallengeType.CENTER_FACE:
         return isNeutral();
@@ -307,14 +303,8 @@ export default function useLiveness(
     return Math.abs(yaw) <= NEUTRAL_THRESHOLD;
   }
 
-  // Returns true exactly once per full close -> reopen cycle. A single
-  // "currently closed" reading is not enough (that doesn't rule out a photo
-  // of someone with their eyes shut); this requires the eyes to actually
-  // transition shut, stay shut for a couple of frames, then reopen.
   function detectBlinkCompleted() {
     if (typeof ear !== "number") {
-      // No reliable eye landmarks this frame (face turned too far, tracking
-      // lost, etc.) — don't guess, just wait for a good reading.
       return false;
     }
 

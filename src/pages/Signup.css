@@ -2,6 +2,59 @@
     max-width: 420px;
 }
 
+.password-hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.password-strength {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.password-strength-bar {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+}
+
+.password-strength-bar span {
+    height: 4px;
+    flex: 1;
+    border-radius: 2px;
+    background: #e5e7eb;
+}
+
+.password-strength-label {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.password-strength-1 .password-strength-bar span:nth-child(1) {
+    background: #dc2626;
+}
+.password-strength-1 .password-strength-label {
+    color: #dc2626;
+}
+
+.password-strength-2 .password-strength-bar span:nth-child(1),
+.password-strength-2 .password-strength-bar span:nth-child(2) {
+    background: #d97706;
+}
+.password-strength-2 .password-strength-label {
+    color: #d97706;
+}
+
+.password-strength-3 .password-strength-bar span {
+    background: #16a34a;
+}
+.password-strength-3 .password-strength-label {
+    color: #16a34a;
+}
+
 .signup-card .login-button {
     align-self: center;
     width: 100%;

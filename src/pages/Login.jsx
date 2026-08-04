@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { postInstance } from "../services/apiCall";
+import { validateEmail } from "../utils/validators";
 import "./Login.css";
 
 function Login() {
@@ -28,6 +29,12 @@ function Login() {
       return;
     }
 
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      setError(emailCheck.message);
+      return;
+    }
+
     setError("");
     setIsSubmitting(true);
 
@@ -39,7 +46,16 @@ function Login() {
 
       const data = response.data;
 
-      if (data?.totp_required && !data?.must_enroll_totp && data?.mfa_token) {
+      if (data?.must_enroll_totp) {
+        const accessToken = data?.access_token || data?.access;
+        navigate("/totp-enroll", {
+          replace: true,
+          state: { accessToken, email: email.trim() },
+        });
+        return;
+      }
+
+      if (data?.totp_required && data?.mfa_token) {
         navigate("/verify-totp", {
           replace: true,
           state: { mfaToken: data.mfa_token, from: location.state?.from },

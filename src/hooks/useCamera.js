@@ -90,22 +90,9 @@ export default function useCamera() {
 
   const captureFrame = () => {
     if (frameBufferRef.current.length > 0) {
-      console.log("📦 Buffer Content");
-
-      console.table(
-        frameBufferRef.current.map((frame, index) => ({
-          index,
-          score: frame.score,
-          timestamp: frame.timestamp,
-        })),
-      );
       const bestFrame = frameBufferRef.current.reduce((best, current) =>
         current.score > best.score ? current : best,
       );
-      console.log("🏆 Selected Best Frame", {
-        score: bestFrame.score,
-        timestamp: bestFrame.timestamp,
-      });
 
       return finalizeCapture(bestFrame.canvas);
     }
@@ -145,15 +132,9 @@ export default function useCamera() {
       score,
       timestamp: Date.now(),
     });
-    console.log("📸 Frame Buffered", {
-      score,
-      totalFrames: frameBufferRef.current.length + 1,
-      resolution: `${snapshot.width}x${snapshot.height}`,
-    });
 
     if (frameBufferRef.current.length > MAX_BUFFER_SIZE) {
       frameBufferRef.current.shift();
-      console.log("🗑 Removed oldest buffered frame");
     }
   };
   const clearFrameBuffer = () => {
